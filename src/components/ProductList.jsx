@@ -8,9 +8,9 @@ export function ProductList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Состояние фильтров
+  // Состояние фильтров: теперь массив категорий
   const [filters, setFilters] = useState({
-    category: undefined,
+    categories: [],
     minPrice: undefined,
     maxPrice: undefined
   });
@@ -18,7 +18,7 @@ export function ProductList() {
   // 1. Загрузка данных при монтировании
   useEffect(() => {
     const controller = new AbortController();
-    
+
     const loadData = async () => {
       try {
         setLoading(true);
@@ -26,11 +26,11 @@ export function ProductList() {
         const res = await fetch('https://fakestoreapi.com/products', {
           signal: controller.signal
         });
-        
+
         if (!res.ok) {
           throw new Error(`Ошибка сети: ${res.status}`);
         }
-        
+
         const data = await res.json();
         setProducts(data);
       } catch (err) {
@@ -43,19 +43,26 @@ export function ProductList() {
         setLoading(false);
       }
     };
-    
+
     loadData();
-    
+
     // Функция очистки: отменяет запрос, если компонент удалили до его завершения
     return () => controller.abort();
   }, []);
 
+  // Максимальная цена среди загруженных товаров — для ползунков
+  const maxAvailablePrice = React.useMemo(
+    () => Math.ceil(products.reduce((m, p) => Math.max(m, p.price), 0)) || 1000,
+    [products]
+  );
+
   // 2. Фильтрация: пересчитываем список при изменении товаров или фильтров
   useEffect(() => {
     let result = products;
-    
-    if (filters.category) {
-      result = result.filter(p => p.category === filters.category);
+
+    // Несколько категорий: пустой массив = все категории
+    if (filters.categories && filters.categories.length > 0) {
+      result = result.filter(p => filters.categories.includes(p.category));
     }
     if (filters.minPrice !== undefined) {
       result = result.filter(p => p.price >= filters.minPrice);
@@ -63,7 +70,7 @@ export function ProductList() {
     if (filters.maxPrice !== undefined) {
       result = result.filter(p => p.price <= filters.maxPrice);
     }
-    
+
     setFilteredProducts(result);
   }, [products, filters]);
 
@@ -72,8 +79,12 @@ export function ProductList() {
 
   return (
     <section>
-      <Filters onFilterChange={setFilters} initialFilters={filters} />
-      
+      <Filters
+        onFilterChange={setFilters}
+        initialFilters={filters}
+        maxAvailablePrice={maxAvailablePrice}
+      />
+
       {filteredProducts.length === 0 ? (
         <p style={{ textAlign: 'center', color: '#777' }}>Товары не найдены по выбранным фильтрам.</p>
       ) : (

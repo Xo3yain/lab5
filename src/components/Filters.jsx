@@ -1,10 +1,11 @@
 import React from 'react';
 
-export function Filters({ onFilterChange, initialFilters }) {
-  const [localCategory, setLocalCategory] = React.useState(initialFilters.category || '');
-  const [localMinPrice, setLocalMinPrice] = React.useState(String(initialFilters.minPrice || ''));
-  const [localMaxPrice, setLocalMaxPrice] = React.useState(String(initialFilters.maxPrice || ''));
-  
+export function Filters({ onFilterChange, initialFilters, maxAvailablePrice = 1000 }) {
+  // Множественный выбор категорий — теперь массив
+  const [localCategories, setLocalCategories] = React.useState(initialFilters.categories || []);
+  const [localMinPrice, setLocalMinPrice] = React.useState(String(initialFilters.minPrice ?? ''));
+  const [localMaxPrice, setLocalMaxPrice] = React.useState(String(initialFilters.maxPrice ?? ''));
+
   // Ошибки валидации
   const [errors, setErrors] = React.useState({});
 
@@ -36,11 +37,11 @@ export function Filters({ onFilterChange, initialFilters }) {
   const handleApply = () => {
     const errs = validate();
     setErrors(errs);
-    
+
     if (Object.keys(errs).length > 0) return;
 
     onFilterChange({
-      category: localCategory === '' ? undefined : localCategory,
+      categories: localCategories,
       minPrice: localMinPrice ? Number(localMinPrice) : undefined,
       maxPrice: localMaxPrice ? Number(localMaxPrice) : undefined
     });
@@ -56,25 +57,47 @@ export function Filters({ onFilterChange, initialFilters }) {
     setErrors(prev => ({ ...prev, max: '' }));
   };
 
+  // Переключение категории в массиве (чекбоксы)
+  const handleCategoryToggle = (category) => {
+    setLocalCategories(prev =>
+      prev.includes(category)
+        ? prev.filter(c => c !== category)
+        : [...prev, category]
+    );
+  };
+
+  const categoriesList = [
+    { value: 'electronics', label: 'Электроника' },
+    { value: 'jewelery', label: 'Ювелирные изделия' },
+    { value: "men's clothing", label: 'Мужская одежда' },
+    { value: "women's clothing", label: 'Женская одежда' },
+  ];
+
   return (
     <div style={{ marginBottom: '2rem' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
-        
+
+        {/* Категории — чекбоксы вместо select */}
         <div>
-          <label style={{ display: 'block', marginBottom: '4px' }}>Категория</label>
-          <select
-            value={localCategory}
-            onChange={(e) => setLocalCategory(e.target.value)}
-            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
-          >
-            <option value="">Все категории</option>
-            <option value="electronics">Электроника</option>
-            <option value="jewelery">Ювелирные изделия</option>
-            <option value="men's clothing">Мужская одежда</option>
-            <option value="women's clothing">Женская одежда</option>
-          </select>
+          <label style={{ display: 'block', marginBottom: '4px' }}>Категории</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {categoriesList.map(({ value, label }) => (
+              <label
+                key={value}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
+              >
+                <input
+                  type="checkbox"
+                  checked={localCategories.includes(value)}
+                  onChange={() => handleCategoryToggle(value)}
+                />
+                {label}
+              </label>
+            ))}
+          </div>
         </div>
 
+        {/* Цена от: number + range */}
         <div>
           <label style={{ display: 'block', marginBottom: '4px' }}>Цена от</label>
           <input
@@ -83,6 +106,7 @@ export function Filters({ onFilterChange, initialFilters }) {
             onChange={handleMinChange}
             placeholder="0"
             min="0"
+            max={maxAvailablePrice}
             style={{
               width: '100%',
               padding: '8px',
@@ -91,6 +115,15 @@ export function Filters({ onFilterChange, initialFilters }) {
               boxSizing: 'border-box'
             }}
           />
+          <input
+            type="range"
+            min="0"
+            max={maxAvailablePrice}
+            step="1"
+            value={localMinPrice || 0}
+            onChange={handleMinChange}
+            style={{ width: '100%', marginTop: '4px' }}
+          />
           {errors.min && (
             <span style={{ color: 'red', fontSize: '0.85rem', marginTop: '4px', display: 'block' }}>
               {errors.min}
@@ -98,14 +131,16 @@ export function Filters({ onFilterChange, initialFilters }) {
           )}
         </div>
 
+        {/* Цена до: number + range */}
         <div>
           <label style={{ display: 'block', marginBottom: '4px' }}>Цена до</label>
           <input
             type="number"
             value={localMaxPrice}
             onChange={handleMaxChange}
-            placeholder="9999"
+            placeholder={String(maxAvailablePrice)}
             min="0"
+            max={maxAvailablePrice}
             style={{
               width: '100%',
               padding: '8px',
@@ -113,6 +148,15 @@ export function Filters({ onFilterChange, initialFilters }) {
               borderRadius: '4px',
               boxSizing: 'border-box'
             }}
+          />
+          <input
+            type="range"
+            min="0"
+            max={maxAvailablePrice}
+            step="1"
+            value={localMaxPrice || maxAvailablePrice}
+            onChange={handleMaxChange}
+            style={{ width: '100%', marginTop: '4px' }}
           />
           {errors.max && (
             <span style={{ color: 'red', fontSize: '0.85rem', marginTop: '4px', display: 'block' }}>
